@@ -18,7 +18,7 @@
 
 class greeleyCMSImport  {
 	
-	public $site_url = 'www.waterville-me.gov';
+	public $site_url = 'www.waterville-me.gov';		// CHANGE THIS to the URL of the site you are updating
 	public $redirects = array();
 	public $errors = array();
 	public $sourceDB;
