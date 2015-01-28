@@ -21,11 +21,11 @@ class greeleyCMSImport  {
 	public $site_url = 'www.waterville-me.gov';		// CHANGE THIS to the URL of the site you are updating
 	public $redirects = array();
 	public $errors = array();
-	public $sourceDB;
+	public $source_db;
 	public $sourcesite = '';
 	
 	public function __construct() {
-		$this->sourceDB = new wpdb(DB_USER, DB_PASSWORD, 'wtvlcity_db', 'localhost');
+		$this->source_db = new wpdb(DB_USER, DB_PASSWORD, 'wtvlcity_db', 'localhost');
 		
 		add_shortcode( 'importsite', array( $this, 'site_import'));
 	}
@@ -102,14 +102,14 @@ class greeleyCMSImport  {
 	public function importDefaultInfo() {
 		
 		$deptid = 0;
-		$rows = $this->sourceDB->get_results(  $this->sourceDB->prepare("select * from departmentlookup where depturl = '%s'" , $this->sourcesite));
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("select * from departmentlookup where depturl = '%s'" , $this->sourcesite));
 		
 		foreach( $rows as $currow ) {
-			$addressArray = explode("\n", $currow->deptaddress, 2);
+			$address_array = explode("\n", $currow->deptaddress, 2);
 			$deptid = $currow->deptid;
 			
-			if(count( $addressArray )) {
-				update_option( 'wtvl_address', stripslashes( $addressArray[0] ) );
+			if(count( $address_array )) {
+				update_option( 'wtvl_address', stripslashes( $address_array[0] ) );
 			}
 	
 			update_option( 'wtvl_phone', $currow->deptphone );
@@ -120,17 +120,17 @@ class greeleyCMSImport  {
 		
 			// Create 'front' page of site...
 			if( $this->sourcesite != '/') {
-				$postCheck = get_page_by_path('front-page',OBJECT,'page');
+				$post_check = get_page_by_path('front-page',OBJECT,'page');
 				
-				if( isset($postCheck->ID )) {
-					$postID = $postCheck->ID;
+				if( isset($post_check->ID )) {
+					$post_id = $post_check->ID;
 				}
 				else {
-					$postID = '';
+					$post_id = '';
 				}
 				
 				$attr = array(
-								'ID' => $postID,
+								'ID' => $post_id,
 								'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($currow->deptdesc) ) )),
 								'post_name' => 'front-page',
 								'post_title' => 'Front Page',
@@ -139,16 +139,16 @@ class greeleyCMSImport  {
 								'page_template' => 'page-homepage.php'
 				);
 				
-				$postInsert = wp_insert_post( $attr, false );
+				$post_insert = wp_insert_post( $attr, false );
 		
-				if( $postInsert > 0 ) {
+				if( $post_insert > 0 ) {
 					if( $currow->deptlogo != '' ) {
-						$this->add_featuredimage( $postInsert, "http://' . $this->site_url . '/images/departments/" . $currow->deptlogo );
+						$this->add_featuredimage( $post_insert, "http://' . $this->site_url . '/images/departments/" . $currow->deptlogo );
 					}
 					
-					update_option( 'page_on_front', $postInsert);
+					update_option( 'page_on_front', $post_insert);
 					update_option( 'show_on_front', 'page' );
-					update_post_meta($postInsert, 'custom_tagline', $currow->deptblurb);
+					update_post_meta($post_insert, 'custom_tagline', $currow->deptblurb);
 					
 					// Create redirects...
 					$this->redirects[] = '/departments/'.$this->sourcesite.'/index.php '. get_blog_details('path');
@@ -170,76 +170,76 @@ class greeleyCMSImport  {
 			return false;
 		}
 		
-		$this->sourceDB->show_errors();
-		$rows = $this->sourceDB->get_results(  $this->sourceDB->prepare("SELECT * from contactlookup WHERE 
+		$this->source_db->show_errors();
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from contactlookup WHERE 
 														department = '%s' 
 														AND active_ind = 'A' 
 													order by contactorder, firstName" , $deptid));
 	
 		if( count($rows)) {
-			$postContent = '<ul id="contactList">';
+			$post_content = '<ul id="contactList">';
 		
 			foreach( $rows as $currow ) {
 		
-				$postContent .= '<li>';
+				$post_content .= '<li>';
 				
 				if( strlen( $currow->photo )) {
-					$postContent .= '<img src="http://' . $this->site_url . '/images/contacts/' . $currow->photo . '" class="alignright wp-post-image" title="'.strip_tags($currow->firstName . ' ' . $currow->lastName) . '" />';
+					$post_content .= '<img src="http://' . $this->site_url . '/images/contacts/' . $currow->photo . '" class="alignright wp-post-image" title="'.strip_tags($currow->firstName . ' ' . $currow->lastName) . '" />';
 				}
 				
-				$postContent .= '<h3>' . $currow->firstName . ' ' . $currow->lastName . '</h3>';
+				$post_content .= '<h3>' . $currow->firstName . ' ' . $currow->lastName . '</h3>';
 				
 				if( strlen( $currow->title )) {
-					$postContent .= '<em>' . $currow->title . '</em><br />';
+					$post_content .= '<em>' . $currow->title . '</em><br />';
 				}
 				
 				if( strlen( $currow->phone )) {
-					$postContent .= '<strong>Phone:</strong> ' . $currow->phone . '<br />';
+					$post_content .= '<strong>Phone:</strong> ' . $currow->phone . '<br />';
 				}
 				
 				if( strlen( $currow->email )) {
-					$postContent .= '<strong>E-mail:</strong> <a href="mailto:'.$currow->email.'">' . $currow->email . '</a><br />';
+					$post_content .= '<strong>E-mail:</strong> <a href="mailto:'.$currow->email.'">' . $currow->email . '</a><br />';
 				}
 				
 				if( strlen( $currow->biography )) {
-					$postContent .= '<div class="profile-biography">'. $currow->biography . '</div>';
+					$post_content .= '<div class="profile-biography">'. $currow->biography . '</div>';
 				}
 		
 				
-				$postContent .= '</li>';
+				$post_content .= '</li>';
 			}
 			
-			$postContent .= '</ul>';
+			$post_content .= '</ul>';
 			
-			$postCheck = get_page_by_path('contacts', OBJECT, 'page');
+			$post_check = get_page_by_path('contacts', OBJECT, 'page');
 				
-			if( isset($postCheck->ID )) {
-				$postID = $postCheck->ID;
+			if( isset($post_check->ID )) {
+				$post_id = $post_check->ID;
 			}
 			else {
-				$postID = '';
+				$post_id = '';
 			}
 			
 			$attr = array(
-							'ID' => $postID,
-							'post_content' => $this->clean_html( stripslashes($postContent) ),
+							'ID' => $post_id,
+							'post_content' => $this->clean_html( stripslashes($post_content) ),
 							'post_name' => 'contacts',
 							'post_title' => 'Contacts',
 							'post_status' => 'publish',
 							'post_type' => 'page'
 			);
 			
-			$postInsert = wp_insert_post( $attr, false );
+			$post_insert = wp_insert_post( $attr, false );
 			
-			if($postInsert === 0) {
+			if($post_insert === 0) {
 				add_error( 'Unable to insert contacts' );
 			}
 			else {
 				// Add redirects...
 				$this->redirects[] = '/departments/' . $this->sourcesite . '/contacts/index.php ' .
-							get_the_permalink($postInsert);
+							get_the_permalink($post_insert);
 				$this->redirects[] = '/departments/' . $this->sourcesite . '/contacts/ ' .
-							get_the_permalink($postInsert);
+							get_the_permalink($post_insert);
 			}
 		}
 	}
@@ -256,34 +256,34 @@ class greeleyCMSImport  {
 			return false;
 		}
 		
-		$rows = $this->sourceDB->get_results(  $this->sourceDB->prepare("SELECT * from newsannouncementlookup WHERE 
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from newsannouncementlookup WHERE 
 														department = '%s' AND 
 														(expire_dtm IS NULL OR expire_dtm >= NOW()) 
 														AND active_ind = 'A' 
 													ORDER BY news_dtm DESC" , $deptid));
 		
 		foreach( $rows as $currow ) {
-			$attachmentAppend = '';
-			$postCheck = get_page_by_title($currow->newstitle,OBJECT,'post');
+			$attachment_append = '';
+			$post_check = get_page_by_title($currow->newstitle,OBJECT,'post');
 			
-			if( isset($postCheck->ID ) && strtotime( $postCheck->post_date ) == strtotime( $currow->news_dtm) ) {
-				$postID = $postCheck->ID;
+			if( isset($post_check->ID ) && strtotime( $post_check->post_date ) == strtotime( $currow->news_dtm) ) {
+				$post_id = $post_check->ID;
 			}
 			else {
-				$postID = '';
+				$post_id = '';
 			}
 			
-			$postContent = $currow->newsdesc;
+			$post_content = $currow->newsdesc;
 			
 			// Check for attachment, add link.
 			if( strlen($currow->attachment) ) {
-				$attachmentAppend = '<div id="attachmentLink"><a href="http://' . $this->site_url . '/_attachments/'. $currow->attachment . '">View attachment ></a></div>';
-				$postContent .= $attachmentAppend;
+				$attachment_append = '<div id="attachmentLink"><a href="http://' . $this->site_url . '/_attachments/'. $currow->attachment . '">View attachment ></a></div>';
+				$post_content .= $attachment_append;
 			}
 	
 			$attr = array(
-							'ID' => $postID,
-							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($postContent) ) )),
+							'ID' => $post_id,
+							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($post_content) ) )),
 							'post_title' => stripslashes( $currow->newstitle),
 							'post_status' => 'publish',
 							'post_type' => 'post',
@@ -291,15 +291,15 @@ class greeleyCMSImport  {
 							'post_category' => array( get_cat_id('News'))
 			);
 			
-			$postInsert = wp_insert_post( $attr, false );
+			$post_insert = wp_insert_post( $attr, false );
 	
-			if( $postInsert == 0 ) {
+			if( $post_insert == 0 ) {
 				add_error( 'Unable to insert news ' . $currow->newstitle );
 			}
 			else {
 				// Create redirects...
 				$this->redirects[] = '/news/article.php?id='.$currow->newsid . ' ' .
-							get_the_permalink($postInsert);
+							get_the_permalink($post_insert);
 			}
 			
 		}
@@ -318,36 +318,36 @@ class greeleyCMSImport  {
 			return false;
 		}
 			
-		$rows = $this->sourceDB->get_results(  $this->sourceDB->prepare("SELECT * from eventslookup WHERE 
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from eventslookup WHERE 
 														department = '%s' 
 														AND active_ind = 'A' 
 													ORDER BY added_on DESC" , $deptid));
 		
 		foreach( $rows as $currow ) {
-			$agendaAppend = "";
-			$postCheck = get_page_by_title($currow->eventtitle,OBJECT,'post');
+			$agenda_append = "";
+			$post_check = get_page_by_title($currow->eventtitle,OBJECT,'post');
 			$categoryArray = array( get_cat_id('Event'));
 			
 			
-			if( isset($postCheck->ID ) && strtotime( $postCheck->post_date ) == strtotime( $currow->eventstart_dtm) ) {
-				$postID = $postCheck->ID;
+			if( isset($post_check->ID ) && strtotime( $post_check->post_date ) == strtotime( $currow->eventstart_dtm) ) {
+				$post_id = $post_check->ID;
 			}
 			else {
-				$postID = '';
+				$post_id = '';
 			}
 			
-			$postID = '';
+			$post_id = '';
 			
-			$postContent = $currow->eventdesc;
+			$post_content = $currow->eventdesc;
 			
 			// Check for agenda
 			if( trim( $currow->agenda ) != "" || trim( $currow->agenda_filename ) != "" ) {
 				
 				if( $currow->attachment_type != '1' ) {
-					$agendaAppend = '<div class="agendaLink"><h3>Agenda:</h3>';
+					$agenda_append = '<div class="agendaLink"><h3>Agenda:</h3>';
 				}
 				else {
-					$agendaAppend = '<div class="agendaLink"><h3>Attachment:</h3>';
+					$agenda_append = '<div class="agendaLink"><h3>Attachment:</h3>';
 				}
 				
 				if( $currow->attachment_type != '1' ) {
@@ -355,49 +355,49 @@ class greeleyCMSImport  {
 				}
 				
 				if( trim ($currow->agenda) != "") {
-					$agendaAppend .= $this->clean_html(wpautop( wptexturize( stripslashes($currow->agenda) ) ));
+					$agenda_append .= $this->clean_html(wpautop( wptexturize( stripslashes($currow->agenda) ) ));
 				}
 				
 				if( trim( $currow->agenda_filename) != "" ) {
-					$agendaAppend .= '<a href="http://' . $this->site_url . '/_attachments/'.stripslashes($currow->agenda_filename).'">';
+					$agenda_append .= '<a href="http://' . $this->site_url . '/_attachments/'.stripslashes($currow->agenda_filename).'">';
 	
 					if( $currow->attachment_type != '1' ) {
-						$agendaAppend .= 'Read Agenda ';
+						$agenda_append .= 'Read Agenda ';
 					}
 					else {
-						$agendaAppend .= 'Download ';
+						$agenda_append .= 'Download ';
 					}
 					
-					$agendaAppend .= '></a>';
+					$agenda_append .= '></a>';
 				}
 				
-				$agendaAppend .= '</div>';
-				$postContent .= $agendaAppend;			
+				$agenda_append .= '</div>';
+				$post_content .= $agenda_append;			
 			}
 			
 			// Check for minutes
 			if( trim( $currow->minutes_filename ) != "" ) {
-				$agendaAppend = '<div class="minutesLink"><h3>Minutes:</h3>';
+				$agenda_append = '<div class="minutesLink"><h3>Minutes:</h3>';
 				$categoryArray[] = get_cat_id( 'Minutes' );
 				
 				if( trim( $currow->minutes_filename) != "" ) {
-					$agendaAppend .= "<a href=\"http://' . $this->site_url .'/_attachments/".stripslashes($currow->minutes_filename)."\">Read Minutes ></a>";
+					$agenda_append .= "<a href=\"http://' . $this->site_url .'/_attachments/".stripslashes($currow->minutes_filename)."\">Read Minutes ></a>";
 				}
 				
-				$agendaAppend .= '</div>';
+				$agenda_append .= '</div>';
 	
-				$postContent .= $agendaAppend;			
+				$post_content .= $agenda_append;			
 			}
 			
 			// Check for eventurl
 			if( trim( $currow->eventurl) != "" ) {
-				$postContent = '<div class="event-external-url"><a href="'. trim( $currow->eventurl ) .'">More Information ></a></div>' . $postContent;
+				$post_content = '<div class="event-external-url"><a href="'. trim( $currow->eventurl ) .'">More Information ></a></div>' . $post_content;
 			}
 			
 			
 			$attr = array(
-							'ID' => $postID,
-							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($postContent) ) )),
+							'ID' => $post_id,
+							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($post_content) ) )),
 							'post_title' => stripslashes( $currow->eventtitle),
 							'post_status' => 'publish',
 							'post_type' => 'post',
@@ -405,14 +405,14 @@ class greeleyCMSImport  {
 							'post_category' => $categoryArray
 			);
 			
-			$postInsert = wp_insert_post( $attr, false );
+			$post_insert = wp_insert_post( $attr, false );
 	
-			if( $postInsert == 0 ) {
+			if( $post_insert == 0 ) {
 				add_error( 'Unable to insert event ' . $currow->eventtitle );
 			}
 			else {
 				if( $currow->eventimage != '' ) {
-					$this->add_featuredimage( $postInsert, "http://" . $this->site_url . "/images/events/" . $currow->eventimage );					
+					$this->add_featuredimage( $post_insert, "http://" . $this->site_url . "/images/events/" . $currow->eventimage );					
 				}
 				
 				// Set other custom fields
@@ -420,21 +420,21 @@ class greeleyCMSImport  {
 				// End date
 				// All day event
 				// Event location
-				update_field('field_54b5c2d19f04f',  $currow->eventstart_dtm, $postInsert);		// Start date/time
-				update_field('field_54b5c3189f050', $currow->eventend_dtm, $postInsert);		// End date/time
+				update_field('field_54b5c2d19f04f',  $currow->eventstart_dtm, $post_insert);		// Start date/time
+				update_field('field_54b5c3189f050', $currow->eventend_dtm, $post_insert);		// End date/time
 				
 				if( date('H:i:s',strtotime( $currow->eventstart_dtm)) == '00:00:00' &&
 					date('H:i:s',strtotime( $currow->eventend_dtm)) == '00:00:00') {
-						update_field('field_54b72bad18811', 'Yes', $postInsert);							// All day event
+						update_field('field_54b72bad18811', 'Yes', $post_insert);							// All day event
 				}
 				
 				if( strlen( $currow->eventcontact )) {
-					update_field('field_54b5c3339f051', stripslashes($currow->eventcontact), $postInsert); // Location
+					update_field('field_54b5c3339f051', stripslashes($currow->eventcontact), $post_insert); // Location
 				}
 				
 				// Create redirects...
 				$this->redirects[] = '/events/view-event.php?id='.$currow->eventid . ' ' .
-							get_the_permalink($postInsert);
+							get_the_permalink($post_insert);
 	
 			}
 		}
@@ -458,7 +458,7 @@ class greeleyCMSImport  {
 			return;
 		}	
 		
-		$rows = $this->sourceDB->get_results(  $this->sourceDB->prepare("SELECT * from contentlookup WHERE 
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from contentlookup WHERE 
 														department = '%s' 
 														AND active_ind = 'A' AND
 														(expire_dtm IS NULL or expire_dtm = '' OR expire_dtm >= NOW()) AND
@@ -467,66 +467,66 @@ class greeleyCMSImport  {
 													ORDER BY filename, added_on DESC" , $deptid));
 		
 		foreach( $rows as $currow ) {
-			$postContent = '';
+			$post_content = '';
 			
-			$postCheck = get_page_by_title($currow->contenttitle, OBJECT, 'page');
+			$post_check = get_page_by_title($currow->contenttitle, OBJECT, 'page');
 			
-			if( isset($postCheck->ID ) && strtotime( $postCheck->post_date ) == strtotime( $currow->added_on) ) {
-				$postID = $postCheck->ID;
+			if( isset($post_check->ID ) && strtotime( $post_check->post_date ) == strtotime( $currow->added_on) ) {
+				$post_id = $post_check->ID;
 			}
 			else {
-				$postID = '';
+				$post_id = '';
 			}
 			
 			if( strlen( $currow->filename) ) {
 				// Content is a link to a file. Create a page that has a link to this content...
-				$postContent .= '<p>To view the content, click on the link below.</p>';
-	            $postContent .=  '<div class="filedownload">';
+				$post_content .= '<p>To view the content, click on the link below.</p>';
+	            $post_content .=  '<div class="filedownload">';
 	                
-	            $postContent .=  '<a href="/_attachments/'. $currow->filename .'">'. $currow->contenttitle .' ></a><br />';
+	            $post_content .=  '<a href="/_attachments/'. $currow->filename .'">'. $currow->contenttitle .' ></a><br />';
 	            $ext = substr(strrchr( $currow->filename, '.'), 1);
 	          
 	            switch($ext) {
 	                case 'pdf':
-	                    $postContent .=  " (PDF document)";
+	                    $post_content .=  " (PDF document)";
 	                    break;
 	                case 'doc':
 	                case 'docx':
-	                    $postContent .=  " (Microsoft Word document)";                    
+	                    $post_content .=  " (Microsoft Word document)";                    
 	                    break;
 	                case 'xls':
-	                    $postContent .=  " (Microsoft Excel document)";
+	                    $post_content .=  " (Microsoft Excel document)";
 	                    break;
 	                default:   
 	                    break;
 	            }
-	            $postContent .=  '</em>';                            
-	            $postContent .=  '</div>';
+	            $post_content .=  '</em>';                            
+	            $post_content .=  '</div>';
 			}
 			
 			if( strlen( trim($currow->contenttext))) {
 				// Content is text. Create a page that is based off of this...
-				$postContent.= '<p>'. $currow->contenttext .'</p>';
+				$post_content.= '<p>'. $currow->contenttext .'</p>';
 			}
 			
 			$attr = array(
-							'ID' => $postID,
-							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($postContent) ) )),
+							'ID' => $post_id,
+							'post_content' => $this->clean_html(wpautop( wptexturize( stripslashes($post_content) ) )),
 							'post_title' => strip_tags($currow->contenttitle),
 							'post_date' => $currow->added_on,
 							'post_status' => 'publish',
 							'post_type' => 'page'
 			);
 			
-			$postInsert = wp_insert_post( $attr, false );
+			$post_insert = wp_insert_post( $attr, false );
 			
-			if( $postInsert == 0 ) {
+			if( $post_insert == 0 ) {
 				add_error( 'Unable to insert page ' . $currow->contenttitle );
 			}
 			
 			// Create redirects...
 			$this->redirects[] = '/departments/'. $this->sourcesite . '/content/' . $currow->contentid . '/'.$this->seotidy($currow->contenttitle) .'.php '.
-							get_the_permalink($postInsert);
+							get_the_permalink($post_insert);
 			
 		}
 		
@@ -544,7 +544,7 @@ class greeleyCMSImport  {
 	/*
 		Logic to add featured image and download if fily doesn't exist.
 	*/
-	public function add_featuredimage( $postInsert, $filename ) {
+	public function add_featuredimage( $post_insert, $filename ) {
 		$image_data = file_get_contents( $filename );
 		$filename = basename( $filename );
 		$wp_upload_dir = wp_upload_dir();
@@ -568,14 +568,14 @@ class greeleyCMSImport  {
 			'post_status' => 'inherit'
 		);
 		
-		$attach_id = wp_insert_attachment( $attachment, $file, $postInsert );
+		$attach_id = wp_insert_attachment( $attachment, $file, $post_insert );
 		require_once( ABSPATH . 'wp-admin/includes/image.php' );
 	
 		// Generate the metadata for the attachment, and update the database record.
 		$attach_data = wp_generate_attachment_metadata( $attach_id, $file);
 	
 		wp_update_attachment_metadata( $attach_id, $attach_data );
-		set_post_thumbnail( $postInsert, $attach_id );
+		set_post_thumbnail( $post_insert, $attach_id );
 		return;
 	}
 	
