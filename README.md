@@ -4,5 +4,7 @@ Utility class/plugin for importing from my custom CMS that I created and have us
 After shortcode executes, will output redirect commands for .htaccess file. Copy/paste to .htaccess or httpd.conf file.
 
 # Shortcode: 
-  [importsite] Shortcode:
-	ex. [importsite sourcesite="fire"]
+  
+  [importsite]
+  
+  ex. [importsite sourcesite="fire"], where sourcesite is the name of the previous directory name
