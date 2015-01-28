@@ -14,18 +14,23 @@
 	
 	Will import a site from a 'Greeley CMS' website to the current site that this script is run on. Add this shortcode to any page to kick off the import.
 	This script can take a couple of minutes to execute with departments that contain thousands of records to create.
+	
+	After script executes, will output redirect commands for .htaccess file. Copy/paste to .htaccess or httpd.conf file.
 */
 
 class greeleyCMSImport  {
 	
 	public $site_url = 'www.waterville-me.gov';		// CHANGE THIS to the URL of the site you are updating
+	public $database_name = 'wtvlcity_db';			// CHANGE THIS to the name of the database we will use (DB_USER must have SELECT access)
+	public $database_servername = 'localhost';		// CHANGE THIS to the server that we will use
+	
 	public $redirects = array();
 	public $errors = array();
 	public $source_db;
 	public $sourcesite = '';
 	
 	public function __construct() {
-		$this->source_db = new wpdb(DB_USER, DB_PASSWORD, 'wtvlcity_db', 'localhost');
+		$this->source_db = new wpdb(DB_USER, DB_PASSWORD, $this->database_name, $this->database_servername);
 		
 		add_shortcode( 'importsite', array( $this, 'site_import'));
 	}
