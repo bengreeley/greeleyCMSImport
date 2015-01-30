@@ -67,11 +67,11 @@ class greeleyCMSImport  {
 		}
 
 		// Import rest of content... 
-		/*
+		
 		$this->importContacts( $deptid );
 		$this->importNews( $deptid );
 		$this->importEvents ( $deptid );
-		$this->importContent( $deptid ); */
+		$this->importContent( $deptid );
 		
 		// Imports completed...check for errors and output
 		if( !count( $this->errors ) ) {
