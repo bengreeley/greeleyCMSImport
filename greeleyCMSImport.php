@@ -66,11 +66,12 @@ class greeleyCMSImport  {
 			return false;
 		}
 
-		// Import rest of content...
+		// Import rest of content... 
+		/*
 		$this->importContacts( $deptid );
 		$this->importNews( $deptid );
 		$this->importEvents ( $deptid );
-		$this->importContent( $deptid );
+		$this->importContent( $deptid ); */
 		
 		// Imports completed...check for errors and output
 		if( !count( $this->errors ) ) {
@@ -147,8 +148,9 @@ class greeleyCMSImport  {
 				$post_insert = wp_insert_post( $attr, false );
 		
 				if( $post_insert > 0 ) {
+
 					if( $currow->deptlogo != '' ) {
-						$this->add_featuredimage( $post_insert, "http://' . $this->site_url . '/images/departments/" . $currow->deptlogo );
+						$this->add_featuredimage( $post_insert, 'http://' . $this->site_url . '/images/departments/' . $currow->deptlogo );
 					}
 					
 					update_option( 'page_on_front', $post_insert);
@@ -550,6 +552,7 @@ class greeleyCMSImport  {
 		Logic to add featured image and download if fily doesn't exist.
 	*/
 	public function add_featuredimage( $post_insert, $filename ) {
+		
 		$image_data = file_get_contents( $filename );
 		$filename = basename( $filename );
 		$wp_upload_dir = wp_upload_dir();
@@ -560,9 +563,7 @@ class greeleyCMSImport  {
 		    $file = $wp_upload_dir['basedir'] . '/' . $filename;
 		}
 		
-		if( !file_exists( $file ) ) {
-			file_put_contents( $file, $image_data );
-		}
+		file_put_contents( $file, $image_data );
 		
 		$wp_filetype = wp_check_filetype($filename, null );
 		
@@ -612,6 +613,7 @@ class greeleyCMSImport  {
 		$string = str_replace('&nbsp;&nbsp;', '&nbsp;', $string);
 		$string = str_replace('&nbsp;', ' ', $string);
 		$string = preg_replace('/(<[^>]+) style=".*?"/i', '$1', $string);
+		$string = str_replace('‰Ûª',"'", $string);
 		return $string;
 	}
 	
