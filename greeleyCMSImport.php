@@ -30,7 +30,9 @@ class greeleyCMSImport  {
 	public $sourcesite = '';
 	
 	public function __construct() {
+
 		$this->source_db = new wpdb(DB_USER, DB_PASSWORD, $this->database_name, $this->database_servername);
+		$this->source_db->show_errors();
 		
 		add_shortcode( 'importsite', array( $this, 'site_import'));
 	}
@@ -40,7 +42,7 @@ class greeleyCMSImport  {
 	*/
 	public function site_import($atts){
 		$return = '';
-		
+
 		set_time_limit( 99999 );			// Make sure we don't time out on larger websites
 		
 		extract( shortcode_atts( array(
@@ -48,6 +50,10 @@ class greeleyCMSImport  {
 				
 			), $atts, 'importsite' ) );
 			
+		if( !is_user_logged_in() ) {
+			echo 'You must be logged in to import data.';
+			return false;	
+		}
 		
 		if( !strlen( $sourcesite )) {
 			return false;
@@ -67,7 +73,6 @@ class greeleyCMSImport  {
 		}
 
 		// Import rest of content... 
-		
 		$this->importContacts( $deptid );
 		$this->importNews( $deptid );
 		$this->importEvents ( $deptid );
@@ -158,8 +163,8 @@ class greeleyCMSImport  {
 					update_post_meta($post_insert, 'custom_tagline', $currow->deptblurb);
 					
 					// Create redirects...
-					$this->redirects[] = '/departments/'.$this->sourcesite.'/index.php '. get_blog_details('path');
-					$this->redirects[] = '/departments/'.$this->sourcesite.'/ '. get_blog_details('path');
+					$this->redirects[] = '/departments/'.$this->sourcesite.'/index.php '. get_blog_details(get_current_blog_id())->siteurl;
+					$this->redirects[] = '/departments/'.$this->sourcesite.'/ '.get_blog_details(get_current_blog_id())->siteurl;
 				}
 			}
 		}
@@ -177,7 +182,6 @@ class greeleyCMSImport  {
 			return false;
 		}
 		
-		$this->source_db->show_errors();
 		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from contactlookup WHERE 
 														department = '%s' 
 														AND active_ind = 'A' 
@@ -266,7 +270,7 @@ class greeleyCMSImport  {
 		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from newsannouncementlookup WHERE 
 														department = '%s' AND 
 														(expire_dtm IS NULL OR expire_dtm >= NOW()) 
-														AND active_ind = 'A' 
+														AND active_ind = 'A'
 													ORDER BY news_dtm DESC" , $deptid));
 		
 		foreach( $rows as $currow ) {
@@ -298,6 +302,13 @@ class greeleyCMSImport  {
 							'post_category' => array( get_cat_id('News'))
 			);
 			
+			// Check to see if this has already been entered...
+			$returnedPosts = get_page_by_title( $attr['post_title']);
+			
+			if( count( $returnedPosts )) {
+				continue;
+			}
+			
 			$post_insert = wp_insert_post( $attr, false );
 	
 			if( $post_insert == 0 ) {
@@ -325,16 +336,16 @@ class greeleyCMSImport  {
 			return false;
 		}
 			
-		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT * from eventslookup WHERE 
+		$rows = $this->source_db->get_results(  $this->source_db->prepare("SELECT DISTINCT * from eventslookup WHERE 
 														department = '%s' 
-														AND active_ind = 'A' 
-													ORDER BY added_on DESC" , $deptid));
+														AND active_ind = 'A'
+													ORDER BY eventstart_dtm ASC" , $deptid));
 		
 		foreach( $rows as $currow ) {
 			$agenda_append = "";
 			$post_check = get_page_by_title($currow->eventtitle,OBJECT,'post');
 			$categoryArray = array( get_cat_id('Event'));
-			
+			$duplicate = false;
 			
 			if( isset($post_check->ID ) && strtotime( $post_check->post_date ) == strtotime( $currow->eventstart_dtm) ) {
 				$post_id = $post_check->ID;
@@ -412,6 +423,22 @@ class greeleyCMSImport  {
 							'post_category' => $categoryArray
 			);
 			
+			// Check to see if this has already been entered...
+			$returnedPosts = get_page_by_title( $attr['post_title']);
+			
+			if( count( $returnedPosts )) {
+				foreach( $returnedPosts as $returnedPost) {
+					if( strtotime(get_field('start_date', $returnedPost->ID)) == strtotime( $currow->eventstart_dtm ) ) {
+						$duplicate = true;
+					}
+				}
+				
+			}
+			
+			if( $duplicate ) {
+				break;
+			}
+			
 			$post_insert = wp_insert_post( $attr, false );
 	
 			if( $post_insert == 0 ) {
@@ -444,8 +471,10 @@ class greeleyCMSImport  {
 							get_the_permalink($post_insert);
 	
 			}
+			ob_flush();
 		}
 		
+
 		return;
 	}
 	
@@ -472,7 +501,6 @@ class greeleyCMSImport  {
 														(contenttext <> '' OR filename <> '')
 													
 													ORDER BY filename, added_on DESC" , $deptid));
-		
 		foreach( $rows as $currow ) {
 			$post_content = '';
 			
@@ -585,7 +613,7 @@ class greeleyCMSImport  {
 		return;
 	}
 	
-	public function clean_html( $string, $allowtags = '<a><b><strong><i><em><br><p><div><table><td><tr><tbody><h1><h2><h3><h4><h5><h6><iframe><object><embed><ul><li><span>', $allowattributes = NULL ) {
+	public function clean_html( $string, $allowtags = '<img><a><b><strong><i><em><br><p><div><table><td><tr><tbody><h1><h2><h3><h4><h5><h6><iframe><object><embed><ul><li><span>', $allowattributes = NULL ) {
 		// from: http://us3.php.net/manual/en/function.strip-tags.php#91498
 	    $string = strip_tags($string,$allowtags);
 	    if (!is_null($allowattributes)) {
@@ -601,7 +629,7 @@ class greeleyCMSImport  {
 	        ),$string);
 	    }
 		// reduce line breaks and remove empty tags
-		$string = str_replace( "�", "'", $string );
+		$string = str_replace( "Õ", "'", $string );
 		$string = str_replace( '\n', ' ', $string ); 
 		$string = preg_replace( "/<[^\/>]*>([\s]?)*<\/[^>]*>/", ' ', $string );
 		// get rid of remaining newlines; basic HTML cleanup
@@ -613,7 +641,7 @@ class greeleyCMSImport  {
 		$string = str_replace('&nbsp;&nbsp;', '&nbsp;', $string);
 		$string = str_replace('&nbsp;', ' ', $string);
 		$string = preg_replace('/(<[^>]+) style=".*?"/i', '$1', $string);
-		$string = str_replace('�۪',"'", $string);
+		$string = str_replace('‰Ûª',"'", $string);
 		return $string;
 	}
 	
